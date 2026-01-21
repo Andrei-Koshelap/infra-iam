@@ -1,0 +1,27 @@
+services:
+  ad:
+    image: nowsci/samba-domain:latest
+    container_name: iam-ad
+    hostname: dc1
+    environment:
+      - DOMAIN=EXAMPLE.TEST
+      - DOMAINPASS=Admin123!
+      - DNSFORWARDER=8.8.8.8
+      - INSECURELDAP=true
+    ports:
+      - "53:53"
+      - "53:53/udp"
+      - "88:88"
+      - "88:88/udp"
+      - "389:389"
+      - "389:389/udp"
+      - "636:636"
+      - "464:464"
+      - "464:464/udp"
+    volumes:
+      - ad-data:/var/lib/samba
+    restart: unless-stopped
+    privileged: true
+
+volumes:
+  ad-data:
