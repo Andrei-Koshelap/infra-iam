@@ -1,3 +1,7 @@
+networks:
+  shared-net:
+    external: true
+
 services:
   iam-postgres:
     image: postgres:16
@@ -9,29 +13,66 @@ services:
     ports:
       - "5436:5432"
     volumes:
-      - iam_pgdata:/var/lib/postgresql/data
+      - iam-pg-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
       interval: 5s
-      timeout: 5s
-      retries: 20
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    networks: [ shared-net ]
 
   iam-keycloak:
     image: quay.io/keycloak/keycloak:26.5.1
     container_name: iam-keycloak
-    command: ["start-dev"]
+    depends_on:
+      iam-postgres:
+        condition: service_healthy
+    command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://iam-postgres:5432/keycloak  # <-- внутри docker network порт 5432
+      KC_DB_URL_HOST: iam-postgres
+      KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloakpass
+
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
       - "8080:8080"
-    depends_on:
-      iam-postgres:
-        condition: service_healthy
+    volumes:
+      - ./keycloak/realm-export:/opt/keycloak/data/import:ro
+    restart: unless-stopped
+    networks: [ shared-net ]
+
+  iam-ad:
+    image: nowsci/samba-domain:latest
+    container_name: iam-ad
+    hostname: dc1
+    environment:
+      - DOMAIN=EXAMPLE.TEST
+      - DOMAINPASS=Admin123!
+      - DNSFORWARDER=8.8.8.8
+      - INSECURELDAP=true
+    ports:
+      - "53:53"
+      - "53:53/udp"
+      - "88:88"
+      - "88:88/udp"
+      - "389:389"
+      - "389:389/udp"
+      - "636:636"
+      - "464:464"
+      - "464:464/udp"
+    volumes:
+      - iam-ad-data:/var/lib/samba
+    restart: unless-stopped
+    privileged: true
+    networks: [ shared-net ]
 
 volumes:
-  iam_pgdata:
+  iam-pg-data:
+  iam-ad-data:
