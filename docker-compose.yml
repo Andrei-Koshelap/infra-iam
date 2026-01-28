@@ -1,5 +1,5 @@
 networks:
-  shared-net:
+  bknet:
     external: true
 
 services:
@@ -10,8 +10,6 @@ services:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloakpass
-    ports:
-      - "5436:5432"
     volumes:
       - iam-pg-data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +18,7 @@ services:
       timeout: 3s
       retries: 30
     restart: unless-stopped
-    networks: [ shared-net ]
+    networks: [ bknet ]
 
   iam-keycloak:
     image: quay.io/keycloak/keycloak:26.5.1
@@ -46,7 +44,7 @@ services:
     volumes:
       - ./keycloak/realm-export:/opt/keycloak/data/import:ro
     restart: unless-stopped
-    networks: [ shared-net ]
+    networks: [ bknet ]
 
   iam-ad:
     image: nowsci/samba-domain:latest
@@ -57,21 +55,34 @@ services:
       - DOMAINPASS=Admin123!
       - DNSFORWARDER=8.8.8.8
       - INSECURELDAP=true
-    ports:
-      - "53:53"
-      - "53:53/udp"
-      - "88:88"
-      - "88:88/udp"
-      - "389:389"
-      - "389:389/udp"
-      - "636:636"
-      - "464:464"
-      - "464:464/udp"
     volumes:
       - iam-ad-data:/var/lib/samba
     restart: unless-stopped
     privileged: true
-    networks: [ shared-net ]
+    networks: [ bknet ]
+
+  # --- Bürokrati: TIM ---
+  tim:
+    build: ./TIM
+    environment:
+      - KEYCLOAK_URL=httpdo://iam-keycloak:8080
+    restart: unless-stopped
+    networks: [ bknet ]
+
+  # --- Bürokrati: Ruuter ---
+  ruuter:
+    build: ./Ruuter
+    volumes:
+      - ./dsl:/DSL
+    depends_on:
+      - tim
+    ports:
+      - "5000:8080"
+    environment:
+      - TIM_URL=http://tim:8085
+      - TIM_USERINFO_PATH=/jwt/custom-jwt-userinfo
+    restart: unless-stopped
+    networks: [ bknet ]
 
 volumes:
   iam-pg-data:
