@@ -1,0 +1,35 @@
+dn: OU=ServiceAccounts,DC=example,DC=test
+objectClass: top
+objectClass: organizationalUnit
+ou: ServiceAccounts
+
+dn: OU=Users,DC=example,DC=test
+objectClass: top
+objectClass: organizationalUnit
+ou: Users
+
+dn: OU=Groups,DC=example,DC=test
+objectClass: top
+objectClass: organizationalUnit
+ou: Groups
+
+dn: CN=APP_admins,OU=Groups,DC=example,DC=test
+objectClass: top
+objectClass: group
+cn: APP_admins
+sAMAccountName: APP_admins
+groupType: -2147483646
+
+dn: CN=APP_user_read,OU=Groups,DC=example,DC=test
+objectClass: top
+objectClass: group
+cn: APP_user_read
+sAMAccountName: APP_user_read
+groupType: -2147483646
+
+dn: CN=APP_user_write,OU=Groups,DC=example,DC=test
+objectClass: top
+objectClass: group
+cn: APP_user_write
+sAMAccountName: APP_user_write
+groupType: -2147483646

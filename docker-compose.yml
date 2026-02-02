@@ -3,6 +3,45 @@ networks:
     external: true
 
 services:
+  # --- Active Directory (Samba AD DC) ---
+  iam-ad:
+    image: nowsci/samba-domain:latest
+    container_name: iam-ad
+    hostname: dc1
+    environment:
+      - DOMAIN=EXAMPLE.TEST
+      - DOMAINPASS=Admin123!
+      - DNSFORWARDER=8.8.8.8
+      - INSECURELDAP=false
+    volumes:
+      - iam-ad-data:/var/lib/samba
+    restart: unless-stopped
+    privileged: true
+    networks: [ bknet ]
+    healthcheck:
+      test: ["CMD-SHELL", "samba-tool domain info 127.0.0.1 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # --- AD Bootstrap (OU, groups, users, memberships) ---
+  iam-ad-bootstrap:
+    image: nowsci/samba-domain:latest
+    depends_on:
+      iam-ad:
+        condition: service_healthy
+    networks: [ bknet ]
+    volumes:
+      - "C:/work/buerokrat/infra-iam/ad/samba/init:/opt/ad/init:ro"
+    environment:
+      - REALM=EXAMPLE.TEST
+      - LDAP_HOST=iam-ad
+      - ADMIN_USER=Administrator
+      - ADMIN_PASS=Admin123!
+    command: ["/bin/bash", "/opt/ad/init/bootstrap.sh"]
+    restart: "no"
+
+  # --- Postgres for Keycloak ---
   iam-postgres:
     image: postgres:16
     container_name: iam-postgres
@@ -20,12 +59,18 @@ services:
     restart: unless-stopped
     networks: [ bknet ]
 
+  # --- Keycloak ---
   iam-keycloak:
     image: quay.io/keycloak/keycloak:26.5.1
     container_name: iam-keycloak
     depends_on:
       iam-postgres:
         condition: service_healthy
+      iam-ad:
+        condition: service_healthy
+      iam-ad-bootstrap:
+        condition: service_completed_successfully
+
     command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres
@@ -45,37 +90,40 @@ services:
       - ./keycloak/realm-export:/opt/keycloak/data/import:ro
     restart: unless-stopped
     networks: [ bknet ]
-
-  iam-ad:
-    image: nowsci/samba-domain:latest
-    container_name: iam-ad
-    hostname: dc1
-    environment:
-      - DOMAIN=EXAMPLE.TEST
-      - DOMAINPASS=Admin123!
-      - DNSFORWARDER=8.8.8.8
-      - INSECURELDAP=true
-    volumes:
-      - iam-ad-data:/var/lib/samba
-    restart: unless-stopped
-    privileged: true
-    networks: [ bknet ]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
   # --- Bürokrati: TIM ---
   tim:
     build: ./TIM
+    container_name: tim
+    depends_on:
+      iam-keycloak:
+        condition: service_healthy
     environment:
-      - KEYCLOAK_URL=httpdo://iam-keycloak:8080
+      - KEYCLOAK_URL=http://iam-keycloak:8080
+    ports:
+      - "8085:8085"
     restart: unless-stopped
     networks: [ bknet ]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8085"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
 
   # --- Bürokrati: Ruuter ---
   ruuter:
     build: ./Ruuter
+    container_name: ruuter
     volumes:
-      - ./dsl:/DSL
+      - ./dsl:/DSL:ro
     depends_on:
-      - tim
+      tim:
+        condition: service_healthy
     ports:
       - "5000:8080"
     environment:

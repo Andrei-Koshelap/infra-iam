@@ -1,0 +1,10 @@
+policies:
+  - id: jwt-verify
+    type: jwt
+    config:
+      jwksUrl: "http://keycloak:8080/realms/demo/protocol/openid-connect/certs"
+      issuer: "http://keycloak:8080/realms/demo"
+      audience: "tim-client"
+      requiredClaims:
+        - name: "preferred_username"
+        - name: "realm_access.roles"

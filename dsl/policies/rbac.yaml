@@ -1,0 +1,12 @@
+policies:
+  - id: rbac-admin
+    type: allow_if_has_role
+    config:
+      claimPath: "realm_access.roles"
+      anyOf: ["admin"]
+
+  - id: rbac-user-read
+    type: allow_if_has_role
+    config:
+      claimPath: "realm_access.roles"
+      anyOf: ["user.read", "admin"]

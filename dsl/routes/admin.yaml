@@ -1,0 +1,39 @@
+routes:
+  # 1) Запуск логина (редирект на Keycloak через TIM)
+  - id: auth-login
+    path: /auth/login
+    method: GET
+    upstream: http://tim:8080/auth/login
+    policies: []
+
+  # 2) Callback после OIDC (Keycloak -> TIM)
+  - id: auth-callback
+    path: /auth/callback
+    method: GET
+    upstream: http://tim:8080/auth/callback
+    policies: []
+
+  # 3) Logout
+  - id: auth-logout
+    path: /auth/logout
+    method: POST
+    upstream: http://tim:8080/auth/logout
+    policies:
+      # Обычно logout тоже требует активной сессии/токена,
+      # но иногда его оставляют публичным (зависит от TIM).
+      - jwt-verify
+
+  # 4) Получить текущий профиль/клеймы (удобно для дебага ролей)
+  - id: auth-me
+    path: /auth/me
+    method: GET
+    upstream: http://tim:8080/auth/me
+    policies:
+      - jwt-verify
+
+  # 5) Healthcheck (без авторизации)
+  - id: auth-health
+    path: /auth/health
+    method: GET
+    upstream: http://tim:8080/health
+    policies: []

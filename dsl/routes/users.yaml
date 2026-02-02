@@ -1,0 +1,45 @@
+routes:
+  # Users: read-only endpoint
+  - id: users-list
+    path: /api/users
+    method: GET
+    upstream: http://demo-service:8080/users
+    policies:
+      - jwt-verify
+      - rbac-user-read
+
+  # Users: get by id
+  - id: users-get
+    path: /api/users/{id}
+    method: GET
+    upstream: http://demo-service:8080/users/{id}
+    policies:
+      - jwt-verify
+      - rbac-user-read
+
+  # Users: create
+  - id: users-create
+    path: /api/users
+    method: POST
+    upstream: http://demo-service:8080/users
+    policies:
+      - jwt-verify
+      - rbac-user-write
+
+  # Users: update
+  - id: users-update
+    path: /api/users/{id}
+    method: PUT
+    upstream: http://demo-service:8080/users/{id}
+    policies:
+      - jwt-verify
+      - rbac-user-write
+
+  # Users: delete (часто делают только admin)
+  - id: users-delete
+    path: /api/users/{id}
+    method: DELETE
+    upstream: http://demo-service:8080/users/{id}
+    policies:
+      - jwt-verify
+      - rbac-admin

@@ -1,0 +1,11 @@
+oidc:
+  issuer: "http://keycloak:8080/realms/demo"
+  clientId: "tim-client"
+  clientSecret: "${TIM_CLIENT_SECRET}"
+  redirectUri: "http://tim:8080/auth/callback"
+  scopes: ["openid", "profile", "email"]
+session:
+  cookieName: "TIM_SESSION"
+  secure: true
+  httpOnly: true
+  sameSite: "Lax"

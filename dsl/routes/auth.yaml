@@ -1,0 +1,26 @@
+routes:
+  # Любые административные операции
+  - id: admin-stats
+    path: /api/admin/stats
+    method: GET
+    upstream: http://demo-service:8080/admin/stats
+    policies:
+      - jwt-verify
+      - rbac-admin
+
+  - id: admin-config-reload
+    path: /api/admin/config/reload
+    method: POST
+    upstream: http://demo-service:8080/admin/config/reload
+    policies:
+      - jwt-verify
+      - rbac-admin
+
+  # Пример: просмотр аудита
+  - id: admin-audit
+    path: /api/admin/audit
+    method: GET
+    upstream: http://demo-service:8080/admin/audit
+    policies:
+      - jwt-verify
+      - rbac-admin
